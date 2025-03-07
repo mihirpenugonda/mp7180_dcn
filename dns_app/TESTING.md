@@ -193,3 +193,100 @@ curl "http://localhost:8081/fibonacci?hostname=fibonacci.com&fs_port=9090&number
    - Verify the DNS record hasn't expired (TTL)
 
 Note: The User Server (US) is now running on port 8081 instead of 8080 to avoid port conflicts.
+
+## Kubernetes Deployment
+
+### 1. Build and Tag Images
+
+```bash
+# Build images
+docker-compose build
+
+# Tag images for Kubernetes
+docker tag auth_server-as:latest auth_server-as:latest
+docker tag auth_server-fs:latest auth_server-fs:latest
+docker tag auth_server-us:latest auth_server-us:latest
+```
+
+### 2. Deploy to Kubernetes
+
+```bash
+kubectl apply -f deploy_dns.yml
+```
+
+### 3. Verify Deployments
+
+```bash
+kubectl get deployments
+kubectl get services
+kubectl get pods
+```
+
+## Testing in Kubernetes Environment
+
+1. Register Fibonacci Server:
+
+```bash
+curl -X PUT -H "Content-Type: application/json" \
+  -d '{
+    "hostname": "fibonacci.com",
+    "ip": "fs-service",
+    "as_ip": "as-service",
+    "as_port": "53533"
+  }' \
+  http://<node-ip>:30002/register
+```
+
+2. Calculate Fibonacci Numbers (Direct to FS):
+
+```bash
+curl "http://<node-ip>:30002/fibonacci?number=10"
+```
+
+3. User Server Requests (Through DNS Resolution):
+
+```bash
+curl "http://<node-ip>:30003/fibonacci?hostname=fibonacci.com&fs_port=9090&number=10&as_ip=as-service&as_port=53533"
+```
+
+Note: Replace `<node-ip>` with your Kubernetes node IP address.
+
+## Port Mappings in Kubernetes
+
+- AS (Authoritative Server): NodePort 30001 (UDP)
+- FS (Fibonacci Server): NodePort 30002
+- US (User Server): NodePort 30003
+
+## Common Issues and Debugging in Kubernetes
+
+1. Check pod status:
+
+```bash
+kubectl get pods
+kubectl describe pod <pod-name>
+```
+
+2. View pod logs:
+
+```bash
+kubectl logs <pod-name>
+```
+
+3. Check service status:
+
+```bash
+kubectl get services
+kubectl describe service <service-name>
+```
+
+4. If pods are not starting:
+
+- Check image pull policy
+- Verify image names are correct
+- Check pod events with `kubectl describe pod`
+
+5. If services are not accessible:
+
+- Verify node IP address
+- Check if pods are running and ready
+- Verify service nodePort configurations
