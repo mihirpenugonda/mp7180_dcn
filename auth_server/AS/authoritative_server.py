@@ -12,6 +12,8 @@ class AuthoritativeServer:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.bind(('0.0.0.0', UDP_PORT))
         self.dns_records = self.load_dns_records()
+        print(f"\n[AS] Authoritative Server is running on UDP port {UDP_PORT}")
+        print("[AS] Waiting for DNS queries and registrations...\n")
 
     def load_dns_records(self):
         if os.path.exists(DNS_DB_FILE):
@@ -39,6 +41,7 @@ class AuthoritativeServer:
                 'ttl': record['TTL']
             }
             self.save_dns_records()
+            print(f"[AS] Registered DNS record for {record['NAME']} → {record['VALUE']}")
             return True
         return False
 
@@ -61,11 +64,12 @@ class AuthoritativeServer:
                     f"VALUE={record['value']}\n"
                     f"TTL={record['ttl']}\n"
                 )
+                print(f"[AS] DNS query for {query['NAME']} → {record['value']}")
                 return response
+        print(f"[AS] DNS query for {query.get('NAME', 'unknown')} → Not found")
         return None
 
     def run(self):
-        print(f"Authoritative Server listening on UDP port {UDP_PORT}")
         while True:
             try:
                 data, addr = self.socket.recvfrom(BUFFER_SIZE)
@@ -73,17 +77,20 @@ class AuthoritativeServer:
                 
                 # Check if it's a registration (has VALUE and TTL) or query
                 if 'VALUE=' in data and 'TTL=' in data:
+                    print(f"\n[AS] Received registration request from {addr[0]}:{addr[1]}")
                     success = self.handle_registration(data)
                     response = "OK" if success else "FAIL"
                 else:
+                    print(f"\n[AS] Received DNS query from {addr[0]}:{addr[1]}")
                     response = self.handle_query(data)
                     if not response:
                         response = "NOT_FOUND"
 
                 self.socket.sendto(response.encode('utf-8'), addr)
             except Exception as e:
-                print(f"Error: {e}")
+                print(f"[AS] Error: {e}")
 
 if __name__ == "__main__":
+    print("\n[AS] Starting Authoritative Server...")
     server = AuthoritativeServer()
     server.run() 
