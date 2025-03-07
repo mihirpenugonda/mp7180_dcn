@@ -1,0 +1,41 @@
+version: "3.8"
+
+services:
+  as:
+    build: ./AS
+    ports:
+      - "53533:53533/udp"
+    volumes:
+      - as-data:/app
+    networks:
+      - dns-net
+
+  fs:
+    build: ./FS
+    ports:
+      - "9090:9090"
+    environment:
+      - FLASK_APP=fibonacci_server.py
+    depends_on:
+      - as
+    networks:
+      - dns-net
+
+  us:
+    build: ./US
+    ports:
+      - "8080:8080"
+    environment:
+      - FLASK_APP=user_server.py
+    depends_on:
+      - as
+      - fs
+    networks:
+      - dns-net
+
+networks:
+  dns-net:
+    driver: bridge
+
+volumes:
+  as-data:
