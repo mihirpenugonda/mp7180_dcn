@@ -1,42 +1,30 @@
 from flask import Flask, request, jsonify
 import socket
 import json
+import os
+import logging
+import sys
 
-app = Flask(__name__)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='[FS] %(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.StreamHandler(sys.stdout)
+    ]
+)
+logger = logging.getLogger(__name__)
+
+app = Flask("fibonacci_server")
+app.logger.handlers = logger.handlers
+app.logger.setLevel(logger.level)
 
 # Global variables to store configuration
 config = {
-    'hostname': None,
-    'ip': None,
-    'as_ip': None,
-    'as_port': None
+    'hostname': os.getenv('FIBONACCI_HOSTNAME', 'fibonacci.com'),
+    'ip': os.getenv('FIBONACCI_IP', '0.0.0.0'),
+    'port': os.getenv('FIBONACCI_PORT', '9090')
 }
-
-def register_with_as():
-    """Register the Fibonacci server with the Authoritative Server"""
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    
-    # Prepare DNS registration message
-    message = (
-        f"TYPE=A\n"
-        f"NAME={config['hostname']}\n"
-        f"VALUE={config['ip']}\n"
-        f"TTL=10\n"
-    )
-    
-    try:
-        # Send registration message
-        sock.sendto(message.encode(), (config['as_ip'], int(config['as_port'])))
-        
-        # Wait for response
-        sock.settimeout(5)
-        response, _ = sock.recvfrom(1024)
-        return response.decode() == "OK"
-    except Exception as e:
-        print(f"Registration error: {e}")
-        return False
-    finally:
-        sock.close()
 
 def calculate_fibonacci(n):
     """Calculate the nth Fibonacci number"""
@@ -50,43 +38,27 @@ def calculate_fibonacci(n):
         a, b = b, a + b
     return b
 
-@app.route('/register', methods=['PUT'])
-def register():
-    try:
-        data = request.get_json()
-        required_fields = ['hostname', 'ip', 'as_ip', 'as_port']
-        
-        # Validate request body
-        if not all(field in data for field in required_fields):
-            return jsonify({'error': 'Missing required fields'}), 400
-        
-        # Update configuration
-        config.update(data)
-        
-        # Register with Authoritative Server
-        if register_with_as():
-            return '', 201
-        else:
-            return jsonify({'error': 'Failed to register with Authoritative Server'}), 500
-            
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
-
 @app.route('/fibonacci', methods=['GET'])
 def fibonacci():
     try:
         number = request.args.get('number')
         if not number:
+            logger.error("Missing number parameter")
             return jsonify({'error': 'Missing number parameter'}), 400
             
         number = int(number)
+        logger.info(f"Calculating Fibonacci number for n={number}")
         result = calculate_fibonacci(number)
+        logger.info(f"Fibonacci calculation result: {result}")
         return jsonify({'fibonacci': result}), 200
         
     except ValueError:
+        logger.error(f"Invalid number format: {number}")
         return jsonify({'error': 'Invalid number format'}), 400
     except Exception as e:
+        logger.error(f"Error calculating Fibonacci: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=9090) 
+    logger.info(f"Starting Fibonacci Server on port {config['port']}")
+    app.run(host='0.0.0.0', port=int(config['port'])) 

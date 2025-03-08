@@ -1,1 +1,2 @@
 # No external dependencies required for the authoritative server 
+flask==2.0.1 

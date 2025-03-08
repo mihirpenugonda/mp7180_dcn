@@ -1,23 +1,28 @@
+version: "3"
+
 services:
   as:
     build: ./AS
     ports:
       - "53533:53533/udp"
     volumes:
-      - as-data:/app
+      - as-data:/tmp
     networks:
-      - dns-net
+      - dns_network
 
   fs:
     build: ./FS
     ports:
       - "9090:9090"
-    environment:
-      - FLASK_APP=fibonacci_server.py
     depends_on:
       - as
     networks:
-      - dns-net
+      - dns_network
+    environment:
+      - FIBONACCI_HOSTNAME=fibonacci.com
+      - FIBONACCI_IP=fs
+      - AS_IP=as
+      - AS_PORT=53533
 
   us:
     build: ./US
@@ -25,14 +30,15 @@ services:
       - "8081:8080"
     environment:
       - FLASK_APP=user_server.py
+      - AS_IP=as
     depends_on:
       - as
       - fs
     networks:
-      - dns-net
+      - dns_network
 
 networks:
-  dns-net:
+  dns_network:
     driver: bridge
 
 volumes:

@@ -2,7 +2,7 @@
 
 This document provides curl commands to test all endpoints of the distributed system. Make sure all services are running using `docker-compose up --build` before testing.
 
-## 1. Register Fibonacci Server with AS
+## 1. Register Fibonacci Server with AS (via User Server)
 
 ### Local Development
 
@@ -14,7 +14,7 @@ curl -X PUT -H "Content-Type: application/json" \
     "as_ip": "127.0.0.1",
     "as_port": "53533"
   }' \
-  http://localhost:9090/register
+  http://localhost:8080/register
 
 # Expected Response:
 # Status: 201 Created
@@ -31,7 +31,7 @@ curl -X PUT -H "Content-Type: application/json" \
     "as_ip": "as",
     "as_port": "53533"
   }' \
-  http://localhost:9090/register
+  http://localhost:8080/register
 
 # Expected Response:
 # Status: 201 Created
@@ -148,7 +148,7 @@ For a complete test of the system, follow these steps in order:
 docker-compose up --build
 ```
 
-2. Register the Fibonacci Server:
+2. Register the Fibonacci Server (through User Server):
 
 ```bash
 curl -X PUT -H "Content-Type: application/json" \
@@ -158,7 +158,7 @@ curl -X PUT -H "Content-Type: application/json" \
     "as_ip": "as",
     "as_port": "53533"
   }' \
-  http://localhost:9090/register
+  http://localhost:8080/register
 ```
 
 3. Test direct Fibonacci calculation:
@@ -177,9 +177,11 @@ curl "http://localhost:8081/fibonacci?hostname=fibonacci.com&fs_port=9090&number
 
 1. If registration fails:
 
-   - Check if AS is running and accessible
+   - Check if both US and AS are running and accessible
    - Verify the AS IP and port are correct
    - Check network connectivity between containers
+   - Check User Server logs for registration attempts
+   - Verify AS logs for registration processing
 
 2. If Fibonacci calculation fails:
 
@@ -224,7 +226,7 @@ kubectl get pods
 
 ## Testing in Kubernetes Environment
 
-1. Register Fibonacci Server:
+1. Register Fibonacci Server (through User Server):
 
 ```bash
 curl -X PUT -H "Content-Type: application/json" \
@@ -234,7 +236,7 @@ curl -X PUT -H "Content-Type: application/json" \
     "as_ip": "as-service",
     "as_port": "53533"
   }' \
-  http://<node-ip>:30002/register
+  http://<node-ip>:30003/register
 ```
 
 2. Calculate Fibonacci Numbers (Direct to FS):
